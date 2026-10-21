@@ -24,6 +24,7 @@ pipeline {
         stage('Start Grid') {
             steps {
                 sh '''
+                    mkdir -p reports
                     docker compose down --remove-orphans || true
                     docker compose up -d --build selenium-hub chrome
                 '''
@@ -57,7 +58,6 @@ pipeline {
                 }
             }
         }
-    }
 
         stage('Teardown') {
             steps {
@@ -68,6 +68,7 @@ pipeline {
 
     post {
         always {
+            sh 'docker compose down --remove-orphans || true'
             archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
         }
     }
