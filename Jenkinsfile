@@ -1,3 +1,4 @@
+```groovy
 pipeline {
     agent any
 
@@ -36,25 +37,58 @@ pipeline {
             steps {
                 script {
                     int testExitCode = sh(
-                        script: 'docker compose run --rm test-runner',
+                        script: '''
+                            set +e
+
+                            docker compose run \
+                                --name lab69-jenkins-test-runner \
+                                test-runner
+
+                            test_exit_code=$?
+
+                            mkdir -p "$WORKSPACE/reports"
+
+                            docker cp \
+                                lab69-jenkins-test-runner:/reports/. \
+                                "$WORKSPACE/reports/"
+                            copy_exit_code=$?
+
+                            docker rm -f \
+                                lab69-jenkins-test-runner \
+                                >/dev/null 2>&1 || true
+
+                            if [ "$copy_exit_code" -ne 0 ]; then
+                                echo "ERROR: Could not copy Selenium reports"
+                                exit "$copy_exit_code"
+                            fi
+
+                            exit "$test_exit_code"
+                        ''',
                         returnStatus: true
                     )
 
                     if (testExitCode != 0) {
-                        error("Selenium tests failed with exit code ${testExitCode}")
+                        error(
+                            "Selenium tests or report collection failed: ${testExitCode}"
+                        )
                     }
                 }
             }
+
             post {
                 always {
-                    junit testResults: 'reports/junit.xml', allowEmptyResults: true
+                    junit(
+                        testResults: 'reports/junit.xml',
+                        allowEmptyResults: false
+                    )
+
                     publishHTML(target: [
                         reportDir: 'reports',
                         reportFiles: 'report.html',
                         reportName: 'Selenium HTML Report',
                         keepAll: true,
                         alwaysLinkToLastBuild: true,
-                        allowMissing: true
+                        allowMissing: false
                     ])
                 }
             }
@@ -70,7 +104,12 @@ pipeline {
     post {
         always {
             sh 'docker compose down --remove-orphans || true'
-            archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+
+            archiveArtifacts(
+                artifacts: 'reports/**',
+                allowEmptyArchive: false
+            )
         }
     }
 }
+```
