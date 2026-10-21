@@ -10,7 +10,7 @@ pipeline {
     }
 
     environment {
-        COMPOSE_PROJECT_NAME = 'lab69'
+        COMPOSE_PROJECT_NAME = 'lab69-jenkins'
     }
 
     stages {
@@ -59,9 +59,15 @@ pipeline {
         }
     }
 
+        stage('Teardown') {
+            steps {
+                sh 'docker compose down --remove-orphans || true'
+            }
+        }
+    }
+
     post {
         always {
-            sh 'docker compose down --remove-orphans || true'
             archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
         }
     }
