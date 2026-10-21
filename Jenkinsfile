@@ -11,6 +11,7 @@ pipeline {
 
     environment {
         COMPOSE_PROJECT_NAME = 'lab69-jenkins'
+        COMPOSE_FILE = 'docker-compose.yml'
     }
 
     stages {
